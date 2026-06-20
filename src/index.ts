@@ -111,8 +111,11 @@ export class Total extends DurableObject {
   }
   async resetTotal(): Promise<number> {
     const db = getDb(this.env.DB)
-    const { rows } = await sql<{ c: number }>`SELECT COUNT(*) AS c FROM visits`.execute(db)
-    const count = rows[0]?.c ?? 0
+    const result = await sql<{ count: number }>`
+      SELECT COUNT(*) AS count
+      FROM visits
+    `.execute(db)
+    const count = result.rows[0]?.count ?? 0
     await this.ctx.storage.put('total', count)
     return count
   }
@@ -147,8 +150,9 @@ function jstBoundaries(now: number): { startOfToday: number; startOfWeek: number
 // [from, to) の訪問数を数える
 async function countVisits(db: Kysely<any>, from: number, to: number): Promise<number> {
   const result = await sql<{ count: number }>`
-    SELECT COUNT(*) FILTER (WHERE time >= ${from} AND time < ${to}) AS count
+    SELECT COUNT(*) AS count
     FROM visits
+    WHERE ${from} <= time AND time < ${to}
   `.execute(db)
   return result.rows[0]?.count ?? 0
 }
