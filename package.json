@@ -10,10 +10,15 @@
     "cf-typegen": "wrangler types"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.4",
     "@types/node": "^25.9.2",
+    "prettier-plugin-embed": "^0.5.1",
+    "prettier-plugin-sql-cst": "^0.22.1",
     "typescript": "^5.5.2",
-    "vitest": "~3.2.0",
-    "wrangler": "^4.98.0"
+    "wrangler": "^4.100.0"
+  },
+  "dependencies": {
+    "hono": "^4.12.25",
+    "kysely": "^0.29.2",
+    "kysely-d1": "^0.4.0"
   }
 }
