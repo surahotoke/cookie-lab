@@ -55,8 +55,9 @@ app.get('/', async (c) => {
       COUNT(*) FILTER (WHERE time >= ${now - 20 * MINUTE}) AS m20,
       COUNT(*) FILTER (WHERE time >= ${now - HOUR}) AS h1,
       COUNT(*) FILTER (WHERE time >= ${startOfToday}) AS today,
-      COUNT(*) FILTER (WHERE time >= ${startOfWeek}) AS week
+      COUNT(*) AS week
     FROM visits
+    WHERE time >= ${startOfWeek}
   `.execute(db)
 
   const row = result.rows[0]
