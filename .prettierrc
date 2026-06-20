@@ -1,6 +1,12 @@
 {
-	"printWidth": 140,
-	"singleQuote": true,
-	"semi": true,
-	"useTabs": true
+  "printWidth": 140,
+  "singleQuote": true,
+  "semi": false,
+  "useTabs": false,
+  "plugins": ["prettier-plugin-embed", "prettier-plugin-sql-cst"],
+  "embeddedSqlTags": ["sql"],
+  "embeddedSqlPlugin": "prettier-plugin-sql-cst",
+  "embeddedSqlParser": "sqlite",
+  "sqlFunctionCase": "upper",
+  "sqlFinalSemicolon": false
 }
