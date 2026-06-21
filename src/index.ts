@@ -36,8 +36,9 @@ app.get('/', async (c) => {
   }
   if (streak > max) max = streak
 
-  // --- 全員合計(DO)---
+  // --- 全員合計/同時接続(DO)---
   const totalPromise = c.env.TOTAL.getByName('global').increment()
+  const onlinePromise = c.env.PRESENCE.getByName('global').peek(now)
 
   // --- 昨日/先週の訪問数(KV)---
   const yesterdayCount = Number((await c.env.KV.get('yesterday')) ?? 0)
@@ -71,11 +72,12 @@ app.get('/', async (c) => {
   // --- 古い行の掃除(3週間より前を削除)---
   waitUntil(sql`DELETE FROM visits WHERE time < ${now - 3 * WEEK}`.execute(db))
 
-  // 全員合計
+  // 全員合計/同時接続
   const total = await totalPromise
+  const online = await onlinePromise
 
   // --- SVG ---
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="520" height="84"><text x="0" y="22" font-size="18">連続 ${streak}日 / 最長 ${max}日 / 全員合計: ${total}</text><text x="0" y="48" font-size="18">直近 5分:${m5} / 20分:${m20} / 1時間:${h1}</text><text x="0" y="74" font-size="18">今日:${todayCount} (昨日:${yesterdayCount}) / 今週:${weekCount} (先週:${lastWeekCount})</text></svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="520" height="110"><text x="0" y="22" font-size="18">連続 ${streak}日 / 最長 ${max}日 / 全員合計: ${total}</text><text x="0" y="48" font-size="18">直近 5分:${m5} / 20分:${m20} / 1時間:${h1}</text><text x="0" y="74" font-size="18">今日:${todayCount} (昨日:${yesterdayCount}) / 今週:${weekCount} (先週:${lastWeekCount})</text><text x="0" y="100" font-size="18">同時接続: ${online}</text></svg>`
 
   // --- ヘッダ + Cookie ---
   c.header('content-type', 'image/svg+xml')
@@ -87,6 +89,30 @@ app.get('/', async (c) => {
 
   return c.body(svg)
 })
+
+app.get('/live', async (c) => {
+  let uuid = getCookie(c, 'uuid')
+  if (!uuid) {
+    uuid = crypto.randomUUID()
+    setCookie(c, 'uuid', uuid, { sameSite: 'None', secure: true, maxAge: 34560000, path: '/' })
+  }
+
+  const online = await c.env.PRESENCE.getByName('global').heartbeat(uuid, Date.now())
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="30"><text x="0" y="20" font-size="18">同時接続: ${online}</text></svg>`
+  c.header('content-type', 'image/svg+xml')
+  c.header('cache-control', 'no-store')
+  return c.body(svg)
+})
+
+const reset = new Hono<{ Bindings: Env }>()
+reset.get('/total', async (c) => {
+  const total = await c.env.TOTAL.getByName('global').resetTotal()
+  return c.json({ total })
+})
+
+// これまで設定したreset系を一括でセット
+app.route('/reset', reset)
 
 export default {
   fetch: app.fetch,
@@ -121,14 +147,28 @@ export class Total extends DurableObject {
   }
 }
 
-const reset = new Hono<{ Bindings: Env }>()
-reset.get('/total', async (c) => {
-  const total = await c.env.TOTAL.getByName('global').resetTotal()
-  return c.json({ total })
-})
+export class Presence extends DurableObject {
+  seen = new Map<string, number>()
 
-// これまで設定したreset系を一括でセット
-app.route('/reset', reset)
+  heartbeat(uuid: string, now: number): number {
+    this.seen.set(uuid, now)
+    return this.countAlive(now)
+  }
+
+  // 打刻せず、今の同接数を返すだけ
+  peek(now: number): number {
+    return this.countAlive(now)
+  }
+
+  private countAlive(now: number): number {
+    let alive = 0
+    for (const [id, t] of this.seen) {
+      if (t >= now - 10 * SECOND) alive++
+      else this.seen.delete(id)
+    }
+    return alive
+  }
+}
 
 // --- 共通ヘルパ ---
 

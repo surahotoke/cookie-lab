@@ -31,12 +31,20 @@
         "name": "TOTAL",
         "class_name": "Total",
       },
+      {
+        "name": "PRESENCE",
+        "class_name": "Presence",
+      },
     ],
   },
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["Total"],
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["Presence"],
     },
   ],
   "triggers": {
@@ -63,6 +71,10 @@
           {
             "name": "TOTAL",
             "class_name": "Total",
+          },
+          {
+            "name": "PRESENCE",
+            "class_name": "Presence",
           },
         ],
       },
